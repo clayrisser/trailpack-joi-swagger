@@ -3,7 +3,7 @@ import joi from 'joi';
 
 const extendedMethods = {
   swagger(params) {
-    console.log('params', params);
+    return params;
   }
 };
 
