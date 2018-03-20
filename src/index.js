@@ -124,7 +124,7 @@ export default class TrailpackJoiSwagger extends Trailpack {
           path[method] = this.getEndpoint(method, route);
         });
       }
-      paths[route.path] = path;
+      paths[route.path] = { ...paths[route.path], ...path };
     });
     return paths;
   }
