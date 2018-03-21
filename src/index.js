@@ -21,6 +21,8 @@ export default class TrailpackJoiSwagger extends Trailpack {
     });
   }
 
+  tags = [];
+
   async validate() {
     return this;
   }
@@ -41,6 +43,14 @@ export default class TrailpackJoiSwagger extends Trailpack {
     const response = _.get(route, 'config.response');
     const parameters = [];
     const responses = {};
+    let tag = (route.path.match(/[^/]+(?=\/[^/]+\/?$)/g) || []).join('');
+    if (!tag.length) tag = 'default';
+    if (!_.includes(_.map(this.tags, tag => tag.name), tag)) {
+      this.tags.push({
+        name: tag,
+        description: `${_.upperFirst(tag)} endpoints`
+      });
+    }
     if (validate) {
       if (validate.payload) {
         _.each(_.get(validate.payload, '_inner.children', []), child => {
@@ -86,6 +96,7 @@ export default class TrailpackJoiSwagger extends Trailpack {
       });
     }
     return {
+      tags: [tag],
       description: _.get(
         route,
         'config.description',
@@ -137,6 +148,7 @@ export default class TrailpackJoiSwagger extends Trailpack {
       license = '',
       author = ''
     } = this.app.pkg;
+    const paths = this.getPaths();
     return {
       swagger: '2.0',
       info: {
@@ -156,7 +168,8 @@ export default class TrailpackJoiSwagger extends Trailpack {
       schemes: ['http'],
       consumes: ['application/json'],
       produces: ['application/json'],
-      paths: this.getPaths()
+      paths,
+      tags: this.tags
     };
   }
 }
