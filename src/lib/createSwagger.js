@@ -26,10 +26,13 @@ const get = {
       _.upperFirst(_.snakeCase(`${tag} ${key}`).replace(/_/g, ' '))
     );
   },
-  methodValue(schema, testName) {
+  example(schema) {
+    return get.methodValue(schema, 'example') || _.get(get.valids(schema), '0');
+  },
+  methodValue(schema, testName, param = 'default') {
     return _.get(
       _.find(schema._tests, test => test.name === testName),
-      'arg.default'
+      `arg.${param}`
     );
   }
 };
@@ -69,7 +72,8 @@ function getEndpoint(method, route) {
       in: 'headers',
       name: key,
       required: header.required,
-      type: header.type
+      type: header.type,
+      example: header.example
     });
   });
   _.each(getResponses(method, route, tag), (response, status) => {
@@ -113,7 +117,7 @@ function getHeaders(method, route, tag) {
     const valids = get.valids(child.schema);
     headers[child.key] = {
       description: get.description(child.key, child.schema, tag),
-      examples: _.get(valids, '0'),
+      example: get.example(child.schema),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
@@ -131,7 +135,7 @@ function getBody(method, route, tag) {
     const valids = get.valids(child.schema);
     body[child.key] = {
       description: get.description(child.key, child.schema, tag),
-      examples: _.get(valids, '0'),
+      example: get.example(child.schema),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
@@ -149,7 +153,7 @@ function getQuery(method, route, tag) {
     const valids = get.valids(child.schema);
     query[child.key] = {
       description: get.description(child.key, child.schema, tag),
-      examples: _.get(valids, '0'),
+      example: get.example(child.schema),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
@@ -169,7 +173,7 @@ function getResponses(method, route, tag) {
     const valids = get.valids(child.schema);
     responses['200'][child.key] = {
       description: get.description(child.key, child.schema, tag),
-      examples: _.get(valids, '0'),
+      example: get.example(child.schema),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),

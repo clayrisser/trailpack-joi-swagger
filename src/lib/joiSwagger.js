@@ -2,7 +2,7 @@ import _ from 'lodash';
 import joi from 'joi';
 
 const extendedMethods = {
-  swagger(params) {
+  example(params) {
     return params;
   },
   description(params) {
