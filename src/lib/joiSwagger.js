@@ -4,6 +4,9 @@ import joi from 'joi';
 const extendedMethods = {
   swagger(params) {
     return params;
+  },
+  description(params) {
+    return params;
   }
 };
 

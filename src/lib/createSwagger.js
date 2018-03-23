@@ -22,8 +22,14 @@ const get = {
   },
   description(key, schema, tag) {
     return (
-      _.get(schema, '_description') ||
+      get.methodValue(schema, 'description') ||
       _.upperFirst(_.snakeCase(`${tag} ${key}`).replace(/_/g, ' '))
+    );
+  },
+  methodValue(schema, testName) {
+    return _.get(
+      _.find(schema._tests, test => test.name === testName),
+      'arg.default'
     );
   }
 };
