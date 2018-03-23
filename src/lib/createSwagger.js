@@ -19,45 +19,54 @@ const get = {
   },
   type(schema) {
     return _.get(schema, '_type', 'object');
+  },
+  description(key, schema, tag) {
+    return (
+      _.get(schema, '_description') ||
+      _.upperFirst(_.snakeCase(`${tag} ${key}`).replace(/_/g, ' '))
+    );
   }
 };
 
 function getEndpoint(method, route) {
   const parameters = [];
   const responses = {};
-  const headers = getHeaders(method, route);
   const tag = getTag(method, route);
+  const headers = getHeaders(method, route, tag);
   if (!_.includes(_.map(tags, tag => tag.name), tag)) {
     tags.push({
       name: tag,
       description: `${_.upperFirst(tag)} endpoints`
     });
   }
-  _.each(getQuery(method, route), (value, key) => {
+  _.each(getQuery(method, route, tag), (value, key) => {
     parameters.push({
-      name: key,
+      description: value.description,
       in: 'query',
+      name: key,
       required: value.required,
       type: value.type
     });
   });
-  _.each(getBody(method, route), (value, key) => {
+  _.each(getBody(method, route, tag), (value, key) => {
     parameters.push({
-      name: key,
+      description: value.description,
       in: 'body',
+      name: key,
       required: value.required,
       type: value.type
     });
   });
   _.each(headers, (header, key) => {
     parameters.push({
-      name: key,
+      description: header.description,
       in: 'headers',
+      name: key,
       required: header.required,
       type: header.type
     });
   });
-  _.each(getResponses(method, route), (response, status) => {
+  _.each(getResponses(method, route, tag), (response, status) => {
     responses[status] = {
       schema: {
         type: 'object',
@@ -66,8 +75,9 @@ function getEndpoint(method, route) {
     };
     _.each(response, (value, key) => {
       responses[status].schema.properties[key] = {
-        type: value.type,
-        required: value.required
+        description: value.description,
+        required: value.required,
+        type: value.type
       };
     });
   });
@@ -80,7 +90,8 @@ function getEndpoint(method, route) {
   };
 }
 
-function getDescription(method, route) {
+function getDescription(method, route, tag) {
+  if (!tag) tag = getTag(method, route);
   return _.get(
     route,
     'config.description',
@@ -88,13 +99,15 @@ function getDescription(method, route) {
   );
 }
 
-function getHeaders(method, route) {
+function getHeaders(method, route, tag) {
+  if (!tag) tag = getTag(method, route);
   const headers = {};
   const validate = _.get(route, 'config.validate', {});
   _.each(get.keys(validate.headers), child => {
     const valids = get.valids(child.schema);
     headers[child.key] = {
-      examples: valids,
+      description: get.description(child.key, child.schema, tag),
+      examples: _.get(valids, '0'),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
@@ -104,13 +117,15 @@ function getHeaders(method, route) {
   return headers;
 }
 
-function getBody(method, route) {
+function getBody(method, route, tag) {
+  if (!tag) tag = getTag(method, route);
   const body = {};
   const validate = _.get(route, 'config.validate', {});
   _.each(get.keys(validate.payload), child => {
     const valids = get.valids(child.schema);
     body[child.key] = {
-      examples: valids,
+      description: get.description(child.key, child.schema, tag),
+      examples: _.get(valids, '0'),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
@@ -120,13 +135,15 @@ function getBody(method, route) {
   return body;
 }
 
-function getQuery(method, route) {
+function getQuery(method, route, tag) {
+  if (!tag) tag = getTag(method, route);
   const query = {};
   const validate = _.get(route, 'config.validate', {});
   _.each(get.keys(validate.query), child => {
     const valids = get.valids(child.schema);
     query[child.key] = {
-      examples: valids,
+      description: get.description(child.key, child.schema, tag),
+      examples: _.get(valids, '0'),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
@@ -136,7 +153,8 @@ function getQuery(method, route) {
   return query;
 }
 
-function getResponses(method, route) {
+function getResponses(method, route, tag) {
+  if (!tag) tag = getTag(method, route);
   const responses = {
     '200': {}
   };
@@ -144,7 +162,8 @@ function getResponses(method, route) {
   _.each(get.keys(response.schema), child => {
     const valids = get.valids(child.schema);
     responses['200'][child.key] = {
-      examples: valids,
+      description: get.description(child.key, child.schema, tag),
+      examples: _.get(valids, '0'),
       required: is.required(child.schema),
       schema: child.schema,
       type: get.type(child.schema),
