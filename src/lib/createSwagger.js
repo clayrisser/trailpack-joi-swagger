@@ -26,8 +26,7 @@ function getEndpoint(method, route) {
   const parameters = [];
   const responses = {};
   const headers = getHeaders(method, route);
-  let tag = (route.path.match(/[^/]+(?=\/[^/]+\/?$)/g) || []).join('');
-  if (!tag.length) tag = 'default';
+  const tag = getTag(method, route);
   if (!_.includes(_.map(tags, tag => tag.name), tag)) {
     tags.push({
       name: tag,
@@ -153,6 +152,16 @@ function getResponses(method, route) {
     };
   });
   return responses;
+}
+
+function getTag(method, route) {
+  const tag = _.get(
+    route.path.match(/\/api\/v\d\/([^/]+)/),
+    '1',
+    (route.path.match(/[^/]+(?=\/[^/]+\/?$)/g) || []).join('')
+  );
+  if (!tag.length) return 'default';
+  return tag;
 }
 
 function getPaths(app) {
