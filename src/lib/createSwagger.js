@@ -77,20 +77,10 @@ function getEndpoint(method, route) {
       example: header.example
     });
   });
-  _.each(getResponses(method, route, tag), (response, status) => {
+  _.each(getResponses(method, route, tag), (responseSpec, status) => {
     responses[status] = {
-      schema: {
-        type: 'object',
-        properties: {}
-      }
+      schema: responseSpec.swagger
     };
-    _.each(response, (value, key) => {
-      responses[status].schema.properties[key] = {
-        description: value.description,
-        required: value.required,
-        type: value.type
-      };
-    });
   });
   return {
     tags: [tag],
@@ -166,28 +156,11 @@ function getQuery(method, route, tag) {
 
 function getResponses(method, route, tag) {
   if (!tag) tag = getTag(method, route);
-  const responses = {
-    '200': {}
-  };
   const response = _.get(route, 'config.response', {});
+  const responses = {};
   if (response.schema) {
-    const spec = new Spec(response.schema);
-    console.log('spec.type', spec.type);
-    console.log('spec.required', spec.required);
-    console.log('spec.examples', spec.examples);
-    console.log('spec.children', _.keys(spec.children));
+    responses['200'] = new Spec(response.schema, tag);
   }
-  _.each(get.keys(response.schema), child => {
-    const valids = get.valids(child.schema);
-    responses['200'][child.key] = {
-      description: get.description(child.key, child.schema, tag),
-      example: get.example(child.schema),
-      required: is.required(child.schema),
-      schema: child.schema,
-      type: get.type(child.schema),
-      valids
-    };
-  });
   return responses;
 }
 
