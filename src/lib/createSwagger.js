@@ -100,7 +100,7 @@ function getParameters({ method, route, tag, parameterType }) {
 
 function getConsumes({ route }) {
   const validate = _.get(route, 'config.validate', {});
-  const children = _.get(validate, 'schema.headers._inner.children', []);
+  const children = _.get(validate, 'headers._inner.children', []);
   const contentType = _.find(children, child => child.key === 'content-type');
   return _.get(contentType, 'schema._valids._set', ['application/json']);
 }

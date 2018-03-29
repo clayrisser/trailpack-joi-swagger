@@ -34,7 +34,8 @@ export default class Spec {
       parameterType,
       produces,
       required,
-      type
+      type,
+      valids
     });
     this.children = children;
     this.description = description;
@@ -67,7 +68,8 @@ export default class Spec {
     parameterType,
     produces,
     required,
-    type
+    type,
+    valids
   }) {
     const swaggerSchema = {
       description
@@ -112,9 +114,13 @@ export default class Spec {
           swaggerSchema.required = true;
           break;
         case 'query':
-          swaggerSchema.type = type;
           swaggerSchema.name = key;
           swaggerSchema.in = parameterType;
+          swaggerSchema.schema = {
+            type,
+            example: _.get(examples, '0')
+          };
+          if (valids) swaggerSchema.schema.enum = valids;
           break;
         default:
           swaggerSchema.type = type;
