@@ -21,6 +21,12 @@ function getEndpoint(method, route) {
       parameters.push(value.swaggerSchema);
     }
   );
+  _.each(
+    getParameters({ method, route, tag, parameterType: 'path' }),
+    value => {
+      parameters.push(value.swaggerSchema);
+    }
+  );
   parameters.push(
     getParameters({ method, route, tag, parameterType: 'body' }).swaggerSchema
   );
@@ -38,6 +44,12 @@ function getEndpoint(method, route) {
   _.each(getResponses({ method, route, tag, produces }), (response, status) => {
     responses[status] = response.swaggerSchema;
   });
+  if (!_.keys(responses).length) {
+    responses['200'] = {
+      description: _.upperFirst(tag),
+      schema: { type: 'object' }
+    };
+  }
   return {
     tags: [tag],
     description: getDescription(method, route),
@@ -66,6 +78,9 @@ function getParameters({ method, route, tag, parameterType }) {
       break;
     case 'header':
       validateType = 'headers';
+      break;
+    case 'path':
+      validateType = 'params';
       break;
   }
   const schema = _.get(route, ['config', 'validate', validateType], {});

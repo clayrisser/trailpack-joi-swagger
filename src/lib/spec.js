@@ -12,14 +12,24 @@ export default class Spec {
     });
     const children = this.getChildren({
       schema,
-      tag,
-      type
+      tag
     });
-    const examples = this.getExamples({ valids, children, type, schema });
+    const items = this.getItems({
+      schema,
+      tag
+    });
+    const examples = this.getExamples({
+      children,
+      items,
+      schema,
+      type,
+      valids
+    });
     const swaggerSchema = this.getSwaggerSchema({
       children,
       description,
       examples,
+      items,
       key,
       parameterType,
       produces,
@@ -29,6 +39,7 @@ export default class Spec {
     this.children = children;
     this.description = description;
     this.examples = examples;
+    this.items = items;
     this.key = key;
     this.parameterType = parameterType;
     this.produces = produces;
@@ -49,13 +60,14 @@ export default class Spec {
 
   getSwaggerSchema({
     children,
-    examples,
-    required,
-    type,
     description,
-    produces,
+    examples,
+    items,
     key,
-    parameterType
+    parameterType,
+    produces,
+    required,
+    type
   }) {
     const swaggerSchema = {
       description
@@ -93,6 +105,17 @@ export default class Spec {
           swaggerSchema.name = key;
           swaggerSchema.in = parameterType;
           break;
+        case 'path':
+          swaggerSchema.type = type;
+          swaggerSchema.name = key;
+          swaggerSchema.in = parameterType;
+          swaggerSchema.required = true;
+          break;
+        case 'query':
+          swaggerSchema.type = type;
+          swaggerSchema.name = key;
+          swaggerSchema.in = parameterType;
+          break;
         default:
           swaggerSchema.type = type;
           swaggerSchema.properties = properties;
@@ -102,31 +125,36 @@ export default class Spec {
       swaggerSchema.type = type;
       if (type === 'object') {
         swaggerSchema.properties = properties;
-      } else if (type !== 'array') {
+      } else if (type === 'array') {
+        swaggerSchema.items = {
+          type: _.get(items, '0', {}).type || 'object'
+        };
+      } else {
         swaggerSchema.example = _.get(examples, '0');
       }
     }
     return swaggerSchema;
   }
 
-  getChildren({ tag, type, schema }) {
+  getChildren({ tag, schema }) {
     const innerChildren = _.get(schema, '_inner.children', []);
-    if (type === 'object') {
-      const children = {};
-      _.each(innerChildren, child => {
-        children[child.key] = new Spec(child.schema, {
-          tag,
-          key: child.key
-        });
+    const children = {};
+    _.each(innerChildren, child => {
+      children[child.key] = new Spec(child.schema, {
+        tag,
+        key: child.key
       });
-      return children;
-    }
-    return _.map(innerChildren, child => {
-      return new Spec(child.schema, { tag, key: child.key });
+    });
+    return children;
+  }
+
+  getItems({ schema, tag }) {
+    return _.map(_.get(schema, '_inner.items', []), item => {
+      return new Spec(item, { tag });
     });
   }
 
-  getExamples({ valids, children, type, schema }) {
+  getExamples({ valids, children, type, schema, items }) {
     if (type === 'object') {
       const example = {};
       _.each(children, (child, key) => {
@@ -134,11 +162,8 @@ export default class Spec {
       });
       return [example];
     } else if (type === 'array') {
-      return [
-        _.map(children, child => {
-          return _.get(child.examples, '0');
-        })
-      ];
+      const item = _.get(items, '0');
+      return [[_.get(item.examples, '0')]];
     }
     const examples = _.without(
       _.uniq(_.concat([this.getMethodValue(schema, 'example')], valids)),
