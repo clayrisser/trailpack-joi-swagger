@@ -1,14 +1,15 @@
 import _ from 'lodash';
 
 export default class Spec {
-  constructor(schema, tag, key) {
+  constructor(schema, { tag, key, parameterType }) {
     this.schema = schema;
     this.tag = tag;
     this.key = key;
+    this.parameterType = parameterType;
     this.required = this.isRequired();
     this.type = this.getType();
     this.children = this.getChildren();
-    this.swagger = this.getSwagger(this.children);
+    this.swaggerSchema = this.getSwaggerSchema(this.children);
     this.valids = this.getValids();
     this.description = this.getDescription();
     this.examples = this.getExamples(this.valids, this.children);
@@ -23,20 +24,21 @@ export default class Spec {
     );
   }
 
-  getSwagger(children) {
-    const swagger = {
+  getSwaggerSchema(children) {
+    const swaggerSchema = {
       type: this.type,
       required: this.required,
       description: this.description
     };
+    if (this.parameterType) swaggerSchema.in = this.parameterType;
     if (this.type === 'object') {
       const properties = {};
       _.each(children, child => {
         properties[child.key] = child.swagger;
       });
-      swagger.properties = properties;
+      swaggerSchema.properties = properties;
     }
-    return swagger;
+    return swaggerSchema;
   }
 
   getChildren() {
@@ -44,12 +46,15 @@ export default class Spec {
     if (this.type === 'object') {
       const children = {};
       _.each(innerChildren, child => {
-        children[child.key] = new Spec(child.schema, this.tag, child.key);
+        children[child.key] = new Spec(child.schema, {
+          tag: this.tag,
+          key: child.key
+        });
       });
       return children;
     }
     return _.map(innerChildren, child => {
-      return new Spec(child.schema, this.tag, child.key);
+      return new Spec(child.schema, { tag: this.tag, key: child.key });
     });
   }
 

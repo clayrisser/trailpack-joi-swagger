@@ -77,9 +77,9 @@ function getEndpoint(method, route) {
       example: header.example
     });
   });
-  _.each(getResponses(method, route, tag), (responseSpec, status) => {
+  _.each(getResponses(method, route, tag), (response, status) => {
     responses[status] = {
-      schema: responseSpec.swagger
+      schema: response.swaggerSchema
     };
   });
   return {
