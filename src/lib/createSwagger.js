@@ -42,12 +42,7 @@ function getEndpoint(method, route) {
   const parameters = [];
   const responses = {};
   const tag = getTag(method, route);
-  const headers = getParameters({
-    method,
-    route,
-    tag,
-    parameterType: 'headers'
-  });
+  const produces = getProduces({ route });
   if (!_.includes(_.map(tags, tag => tag.name), tag)) {
     tags.push({
       name: tag,
@@ -66,10 +61,18 @@ function getEndpoint(method, route) {
       parameters.push(value.swaggerSchema);
     }
   );
-  _.each(headers, value => {
-    parameters.push(value.swaggerSchema);
-  });
-  _.each(getResponses(method, route, tag), (response, status) => {
+  _.each(
+    getParameters({
+      method,
+      route,
+      tag,
+      parameterType: 'headers'
+    }),
+    value => {
+      parameters.push(value.swaggerSchema);
+    }
+  );
+  _.each(getResponses({ method, route, tag, produces }), (response, status) => {
     responses[status] = {
       schema: response.swaggerSchema
     };
@@ -77,7 +80,7 @@ function getEndpoint(method, route) {
   return {
     tags: [tag],
     description: getDescription(method, route),
-    produces: _.get(headers, 'content-type.valids', []),
+    produces,
     parameters: parameters.length ? parameters : undefined,
     responses: _.keys(responses).length ? responses : undefined
   };
@@ -114,12 +117,23 @@ function getParameters({ method, route, tag, parameterType }) {
   return parameters;
 }
 
-function getResponses(method, route, tag) {
+function getProduces({ route }) {
+  const response = _.get(route, 'config.response', {});
+  const children = _.get(response, 'schema.headers._inner.children', []);
+  const contentType = _.find(children, child => child.key === 'content-type');
+  return _.get(contentType, 'schema._valids._set', ['application/json']);
+}
+
+function getResponses({ method, route, tag, produces }) {
   if (!tag) tag = getTag(method, route);
   const response = _.get(route, 'config.response', {});
   const responses = {};
-  if (response.schema) {
-    responses['200'] = new Spec(response.schema, { tag });
+  if (_.get(response, 'schema.payload')) {
+    responses['200'] = new Spec(response.schema.payload, {
+      tag,
+      parameterType: 'response',
+      produces
+    });
   }
   return responses;
 }

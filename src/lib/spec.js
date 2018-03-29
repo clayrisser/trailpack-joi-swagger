@@ -1,10 +1,11 @@
 import _ from 'lodash';
 
 export default class Spec {
-  constructor(schema, { tag, key, parameterType }) {
+  constructor(schema, { tag, key, parameterType, produces }) {
     this.schema = schema;
     this.tag = tag;
     this.key = key;
+    this.produces = produces;
     this.parameterType = parameterType;
     this.required = this.isRequired();
     this.type = this.getType();
@@ -17,6 +18,8 @@ export default class Spec {
     this.children = this.getChildren();
     this.examples = this.getExamples(this.valids, this.children);
     this.swaggerSchema = this.getSwaggerSchema({
+      produces: this.produces,
+      examples: this.examples,
       children: this.children,
       required: this.required,
       type: this.type,
@@ -35,9 +38,11 @@ export default class Spec {
 
   getSwaggerSchema({
     children,
+    examples,
     required,
     type,
     description,
+    produces,
     key,
     parameterType
   }) {
@@ -47,8 +52,15 @@ export default class Spec {
       required
     };
     if (parameterType) {
-      if (key) swaggerSchema.name = key;
-      swaggerSchema.in = parameterType;
+      if (parameterType === 'response') {
+        swaggerSchema.examples = {};
+        _.each(produces, produced => {
+          swaggerSchema.examples[produced] = _.get(examples, '0');
+        });
+      } else {
+        if (key) swaggerSchema.name = key;
+        swaggerSchema.in = parameterType;
+      }
     }
     if (type === 'object') {
       const properties = {};
