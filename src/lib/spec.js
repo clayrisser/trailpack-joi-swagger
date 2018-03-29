@@ -2,31 +2,42 @@ import _ from 'lodash';
 
 export default class Spec {
   constructor(schema, { tag, key, parameterType, produces }) {
-    this.schema = schema;
-    this.tag = tag;
+    const required = this.isRequired(schema);
+    const type = this.getType(schema);
+    const valids = this.getValids(schema);
+    const description = this.getDescription({
+      key,
+      schema,
+      tag
+    });
+    const children = this.getChildren({
+      schema,
+      tag,
+      type
+    });
+    const examples = this.getExamples({ valids, children, type, schema });
+    const swaggerSchema = this.getSwaggerSchema({
+      children,
+      description,
+      examples,
+      key,
+      parameterType,
+      produces,
+      required,
+      type
+    });
+    this.children = children;
+    this.description = description;
+    this.examples = examples;
     this.key = key;
-    this.produces = produces;
     this.parameterType = parameterType;
-    this.required = this.isRequired();
-    this.type = this.getType();
-    this.valids = this.getValids();
-    this.description = this.getDescription({
-      schema: this.schema,
-      tag: this.tag,
-      key: this.key
-    });
-    this.children = this.getChildren();
-    this.examples = this.getExamples(this.valids, this.children);
-    this.swaggerSchema = this.getSwaggerSchema({
-      produces: this.produces,
-      examples: this.examples,
-      children: this.children,
-      required: this.required,
-      type: this.type,
-      description: this.description,
-      key: this.key,
-      parameterType: this.parameterType
-    });
+    this.produces = produces;
+    this.required = required;
+    this.schema = schema;
+    this.swaggerSchema = swaggerSchema;
+    this.tag = tag;
+    this.type = type;
+    this.valids = valids;
   }
 
   getDescription({ schema, tag, key }) {
@@ -72,31 +83,31 @@ export default class Spec {
     return swaggerSchema;
   }
 
-  getChildren() {
-    const innerChildren = _.get(this.schema, '_inner.children', []);
-    if (this.type === 'object') {
+  getChildren({ tag, type, schema }) {
+    const innerChildren = _.get(schema, '_inner.children', []);
+    if (type === 'object') {
       const children = {};
       _.each(innerChildren, child => {
         children[child.key] = new Spec(child.schema, {
-          tag: this.tag,
+          tag,
           key: child.key
         });
       });
       return children;
     }
     return _.map(innerChildren, child => {
-      return new Spec(child.schema, { tag: this.tag, key: child.key });
+      return new Spec(child.schema, { tag, key: child.key });
     });
   }
 
-  getExamples(valids, children) {
-    if (this.type === 'object') {
+  getExamples({ valids, children, type, schema }) {
+    if (type === 'object') {
       const example = {};
       _.each(children, (child, key) => {
         example[key] = _.get(child.examples, '0');
       });
       return [example];
-    } else if (this.type === 'array') {
+    } else if (type === 'array') {
       return [
         _.map(children, child => {
           return _.get(child.examples, '0');
@@ -104,31 +115,31 @@ export default class Spec {
       ];
     }
     const examples = _.without(
-      _.uniq(_.concat([this.getMethodValue('example')], valids)),
+      _.uniq(_.concat([this.getMethodValue(schema, 'example')], valids)),
       null,
       undefined,
       ''
     );
-    if (!examples.length) return [`some-${this.type}`];
+    if (!examples.length) return [`some-${type}`];
     return examples;
   }
 
-  getMethodValue(testName, param = 'default') {
+  getMethodValue(schema, testName, param = 'default') {
     return _.get(
-      _.find(this.schema._tests, test => test.name === testName),
+      _.find(schema._tests, test => test.name === testName),
       `arg.${param}`
     );
   }
 
-  isRequired() {
-    return _.get(this.schema, '_flags.presence') === 'required';
+  isRequired(schema) {
+    return _.get(schema, '_flags.presence') === 'required';
   }
 
-  getType() {
-    return _.get(this.schema, '_type', 'object');
+  getType(schema) {
+    return _.get(schema, '_type', 'object');
   }
 
-  getValids() {
-    return _.get(this.schema, '_valids._set', []);
+  getValids(schema) {
+    return _.get(schema, '_valids._set', []);
   }
 }

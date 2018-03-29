@@ -1,6 +1,6 @@
 {
   "name": "trailpack-joi-swagger",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Create swagger docs from trails joi validation",
   "homepage": "https://github.com/jamrizzi/trailpack-joi-swagger",
   "author": {

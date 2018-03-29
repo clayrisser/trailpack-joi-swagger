@@ -3,41 +3,6 @@ import Spec from './spec';
 
 const tags = [];
 
-const is = {
-  required(schema) {
-    return _.get(schema, '_flags.presence') === 'required';
-  },
-  object(schema) {
-    return get.type(schema) === 'object';
-  }
-};
-const get = {
-  valids(schema) {
-    return _.get(schema, '_valids._set', []);
-  },
-  keys(schema) {
-    return _.get(schema, '_inner.children', []);
-  },
-  type(schema) {
-    return _.get(schema, '_type', 'object');
-  },
-  description(key, schema, tag) {
-    return (
-      get.methodValue(schema, 'description') ||
-      _.upperFirst(_.snakeCase(`${tag} ${key}`).replace(/_/g, ' '))
-    );
-  },
-  example(schema) {
-    return get.methodValue(schema, 'example') || _.get(get.valids(schema), '0');
-  },
-  methodValue(schema, testName, param = 'default') {
-    return _.get(
-      _.find(schema._tests, test => test.name === testName),
-      `arg.${param}`
-    );
-  }
-};
-
 function getEndpoint(method, route) {
   const parameters = [];
   const responses = {};
