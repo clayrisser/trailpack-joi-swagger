@@ -79,6 +79,8 @@ export default class Spec {
         properties[child.key] = child.swaggerSchema;
       });
       swaggerSchema.properties = properties;
+    } else if (type !== 'array') {
+      swaggerSchema.example = _.get(examples, '0');
     }
     return swaggerSchema;
   }
