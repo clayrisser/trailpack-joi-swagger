@@ -58,29 +58,53 @@ export default class Spec {
     parameterType
   }) {
     const swaggerSchema = {
-      type,
-      description,
-      required
+      description
     };
-    if (parameterType) {
-      if (parameterType === 'response') {
-        swaggerSchema.examples = {};
-        _.each(produces, produced => {
-          swaggerSchema.examples[produced] = _.get(examples, '0');
-        });
-      } else {
-        if (key) swaggerSchema.name = key;
-        swaggerSchema.in = parameterType;
-      }
-    }
+    let properties = null;
     if (type === 'object') {
-      const properties = {};
+      properties = {};
       _.each(children, child => {
         properties[child.key] = child.swaggerSchema;
       });
-      swaggerSchema.properties = properties;
-    } else if (type !== 'array') {
-      swaggerSchema.example = _.get(examples, '0');
+    }
+
+    if (parameterType) {
+      switch (parameterType) {
+        case 'response':
+          swaggerSchema.schema = {
+            type,
+            properties
+          };
+          swaggerSchema.examples = {};
+          _.each(produces, produced => {
+            swaggerSchema.examples[produced] = _.get(examples, '0');
+          });
+          break;
+        case 'body':
+          swaggerSchema.schema = {
+            type,
+            properties
+          };
+          swaggerSchema.in = parameterType;
+          swaggerSchema.name = 'body';
+          break;
+        case 'header':
+          swaggerSchema.type = type;
+          swaggerSchema.name = key;
+          swaggerSchema.in = parameterType;
+          break;
+        default:
+          swaggerSchema.type = type;
+          swaggerSchema.properties = properties;
+          break;
+      }
+    } else {
+      swaggerSchema.type = type;
+      if (type === 'object') {
+        swaggerSchema.properties = properties;
+      } else if (type !== 'array') {
+        swaggerSchema.example = _.get(examples, '0');
+      }
     }
     return swaggerSchema;
   }

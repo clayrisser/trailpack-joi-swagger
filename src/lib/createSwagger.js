@@ -8,6 +8,7 @@ function getEndpoint(method, route) {
   const responses = {};
   const tag = getTag(method, route);
   const produces = getProduces({ route });
+  const consumes = getConsumes({ route });
   if (!_.includes(_.map(tags, tag => tag.name), tag)) {
     tags.push({
       name: tag,
@@ -20,32 +21,28 @@ function getEndpoint(method, route) {
       parameters.push(value.swaggerSchema);
     }
   );
-  _.each(
-    getParameters({ method, route, tag, parameterType: 'body' }),
-    value => {
-      parameters.push(value.swaggerSchema);
-    }
+  parameters.push(
+    getParameters({ method, route, tag, parameterType: 'body' }).swaggerSchema
   );
   _.each(
     getParameters({
       method,
       route,
       tag,
-      parameterType: 'headers'
+      parameterType: 'header'
     }),
     value => {
       parameters.push(value.swaggerSchema);
     }
   );
   _.each(getResponses({ method, route, tag, produces }), (response, status) => {
-    responses[status] = {
-      schema: response.swaggerSchema
-    };
+    responses[status] = response.swaggerSchema;
   });
   return {
     tags: [tag],
     description: getDescription(method, route),
     produces,
+    consumes,
     parameters: parameters.length ? parameters : undefined,
     responses: _.keys(responses).length ? responses : undefined
   };
@@ -62,16 +59,20 @@ function getDescription(method, route, tag) {
 
 function getParameters({ method, route, tag, parameterType }) {
   if (!tag) tag = getTag(method, route);
+  let validateType = parameterType;
+  switch (parameterType) {
+    case 'body':
+      validateType = 'payload';
+      break;
+    case 'header':
+      validateType = 'headers';
+      break;
+  }
+  const schema = _.get(route, ['config', 'validate', validateType], {});
+  if (parameterType === 'body') {
+    return new Spec(schema, { tag, parameterType });
+  }
   const parameters = {};
-  const schema = _.get(
-    route,
-    [
-      'config',
-      'validate',
-      parameterType === 'body' ? 'payload' : parameterType
-    ],
-    {}
-  );
   _.each(_.get(schema, '_inner.children', []), child => {
     parameters[child.key] = new Spec(child.schema, {
       key: child.key,
@@ -80,6 +81,13 @@ function getParameters({ method, route, tag, parameterType }) {
     });
   });
   return parameters;
+}
+
+function getConsumes({ route }) {
+  const validate = _.get(route, 'config.validate', {});
+  const children = _.get(validate, 'schema.headers._inner.children', []);
+  const contentType = _.find(children, child => child.key === 'content-type');
+  return _.get(contentType, 'schema._valids._set', ['application/json']);
 }
 
 function getProduces({ route }) {
