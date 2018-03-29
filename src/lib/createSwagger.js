@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import Spec from './spec';
 
 const tags = [];
 
@@ -169,6 +170,13 @@ function getResponses(method, route, tag) {
     '200': {}
   };
   const response = _.get(route, 'config.response', {});
+  if (response.schema) {
+    const spec = new Spec(response.schema);
+    console.log('spec.type', spec.type);
+    console.log('spec.required', spec.required);
+    console.log('spec.examples', spec.examples);
+    console.log('spec.children', _.keys(spec.children));
+  }
   _.each(get.keys(response.schema), child => {
     const valids = get.valids(child.schema);
     responses['200'][child.key] = {
