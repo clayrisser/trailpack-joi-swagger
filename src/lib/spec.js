@@ -8,33 +8,52 @@ export default class Spec {
     this.parameterType = parameterType;
     this.required = this.isRequired();
     this.type = this.getType();
-    this.children = this.getChildren();
-    this.swaggerSchema = this.getSwaggerSchema(this.children);
     this.valids = this.getValids();
-    this.description = this.getDescription();
+    this.description = this.getDescription({
+      schema: this.schema,
+      tag: this.tag,
+      key: this.key
+    });
+    this.children = this.getChildren();
     this.examples = this.getExamples(this.valids, this.children);
+    this.swaggerSchema = this.getSwaggerSchema({
+      children: this.children,
+      required: this.required,
+      type: this.type,
+      description: this.description,
+      key: this.key,
+      parameterType: this.parameterType
+    });
   }
 
-  getDescription() {
+  getDescription({ schema, tag, key }) {
     return (
-      this.getMethodValue(this.schema, 'description') ||
-      _.upperFirst(
-        _.snakeCase(`${this.tag} ${this.key || ''}`).replace(/_/g, ' ')
-      )
+      this.getMethodValue(schema, 'description') ||
+      _.upperFirst(_.snakeCase(`${tag} ${key || ''}`).replace(/_/g, ' '))
     );
   }
 
-  getSwaggerSchema(children) {
+  getSwaggerSchema({
+    children,
+    required,
+    type,
+    description,
+    key,
+    parameterType
+  }) {
     const swaggerSchema = {
-      type: this.type,
-      required: this.required,
-      description: this.description
+      type,
+      description,
+      required
     };
-    if (this.parameterType) swaggerSchema.in = this.parameterType;
-    if (this.type === 'object') {
+    if (parameterType) {
+      if (key) swaggerSchema.name = key;
+      swaggerSchema.in = parameterType;
+    }
+    if (type === 'object') {
       const properties = {};
       _.each(children, child => {
-        properties[child.key] = child.swagger;
+        properties[child.key] = child.swaggerSchema;
       });
       swaggerSchema.properties = properties;
     }

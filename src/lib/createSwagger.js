@@ -42,40 +42,32 @@ function getEndpoint(method, route) {
   const parameters = [];
   const responses = {};
   const tag = getTag(method, route);
-  const headers = getHeaders(method, route, tag);
+  const headers = getParameters({
+    method,
+    route,
+    tag,
+    parameterType: 'headers'
+  });
   if (!_.includes(_.map(tags, tag => tag.name), tag)) {
     tags.push({
       name: tag,
       description: `${_.upperFirst(tag)} endpoints`
     });
   }
-  _.each(getQuery(method, route, tag), (value, key) => {
-    parameters.push({
-      description: value.description,
-      in: 'query',
-      name: key,
-      required: value.required,
-      type: value.type
-    });
-  });
-  _.each(getBody(method, route, tag), (value, key) => {
-    parameters.push({
-      description: value.description,
-      in: 'body',
-      name: key,
-      required: value.required,
-      type: value.type
-    });
-  });
-  _.each(headers, (header, key) => {
-    parameters.push({
-      description: header.description,
-      in: 'headers',
-      name: key,
-      required: header.required,
-      type: header.type,
-      example: header.example
-    });
+  _.each(
+    getParameters({ method, route, tag, parameterType: 'query' }),
+    value => {
+      parameters.push(value.swaggerSchema);
+    }
+  );
+  _.each(
+    getParameters({ method, route, tag, parameterType: 'body' }),
+    value => {
+      parameters.push(value.swaggerSchema);
+    }
+  );
+  _.each(headers, value => {
+    parameters.push(value.swaggerSchema);
   });
   _.each(getResponses(method, route, tag), (response, status) => {
     responses[status] = {
@@ -100,58 +92,26 @@ function getDescription(method, route, tag) {
   );
 }
 
-function getHeaders(method, route, tag) {
+function getParameters({ method, route, tag, parameterType }) {
   if (!tag) tag = getTag(method, route);
-  const headers = {};
-  const validate = _.get(route, 'config.validate', {});
-  _.each(get.keys(validate.headers), child => {
-    const valids = get.valids(child.schema);
-    headers[child.key] = {
-      description: get.description(child.key, child.schema, tag),
-      example: get.example(child.schema),
-      required: is.required(child.schema),
-      schema: child.schema,
-      type: get.type(child.schema),
-      valids
-    };
+  const parameters = {};
+  const schema = _.get(
+    route,
+    [
+      'config',
+      'validate',
+      parameterType === 'body' ? 'payload' : parameterType
+    ],
+    {}
+  );
+  _.each(_.get(schema, '_inner.children', []), child => {
+    parameters[child.key] = new Spec(child.schema, {
+      key: child.key,
+      tag,
+      parameterType
+    });
   });
-  return headers;
-}
-
-function getBody(method, route, tag) {
-  if (!tag) tag = getTag(method, route);
-  const body = {};
-  const validate = _.get(route, 'config.validate', {});
-  _.each(get.keys(validate.payload), child => {
-    const valids = get.valids(child.schema);
-    body[child.key] = {
-      description: get.description(child.key, child.schema, tag),
-      example: get.example(child.schema),
-      required: is.required(child.schema),
-      schema: child.schema,
-      type: get.type(child.schema),
-      valids
-    };
-  });
-  return body;
-}
-
-function getQuery(method, route, tag) {
-  if (!tag) tag = getTag(method, route);
-  const query = {};
-  const validate = _.get(route, 'config.validate', {});
-  _.each(get.keys(validate.query), child => {
-    const valids = get.valids(child.schema);
-    query[child.key] = {
-      description: get.description(child.key, child.schema, tag),
-      example: get.example(child.schema),
-      required: is.required(child.schema),
-      schema: child.schema,
-      type: get.type(child.schema),
-      valids
-    };
-  });
-  return query;
+  return parameters;
 }
 
 function getResponses(method, route, tag) {
@@ -159,7 +119,7 @@ function getResponses(method, route, tag) {
   const response = _.get(route, 'config.response', {});
   const responses = {};
   if (response.schema) {
-    responses['200'] = new Spec(response.schema, tag);
+    responses['200'] = new Spec(response.schema, { tag });
   }
   return responses;
 }
